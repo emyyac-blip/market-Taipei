@@ -88,4 +88,8 @@ st.write("---")
 
 # 下方區域：巨大總金額與清空按鈕
 st.markdown("### 💰 應收總金額")
-st.markdown(f'<div class="main-price">${total_amount:,}</div>', unsafe
+st.markdown(f'<div class="main-price">${total_amount:,}</div>', unsafe_allow_html=True)
+
+if st.button("🗑️ 結帳完成 / 下一位客人 (清空清單)", type="primary", use_container_width=True):
+    st.session_state.cart = []
+    st.rerun()
