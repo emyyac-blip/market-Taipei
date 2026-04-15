@@ -58,7 +58,7 @@ with t1:
     st.title("花田喜彘 - 智慧結帳")
     c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
     with c1: cust_name = st.text_input("👤 客人名稱", value=f"現場客 {next_num}", key="k_name_v434")
-    with c2: pay_m = st.selectbox("💳 支付", ["現金", "Line Pay", "轉帳"], key="k_pay_v434")
+    with c2: pay_m = st.selectbox("💳 支付", ["現金", "Line Pay"], key="k_pay_v434")
     with c3: disc = st.number_input("💸 折扣", min_value=0, value=0, step=5, key="k_disc_v434")
     with c4: is_p = st.toggle("⭐ 累積點數", value=True, key="k_pts_v434")
     st.write("---")
