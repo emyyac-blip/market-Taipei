@@ -94,7 +94,7 @@ with t1:
     # 顯示點數邏輯
     final_pts = int(ft // 350) if is_member else 0
     if is_member:
-        st.markdown(f'<div class="points-active">✨ 會員本次累積：{final_pts} 點</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="points-active">✨ 點數換算：{final_pts} 點</div>', unsafe_allow_html=True)
     else:
         st.write("<p style='text-align:center; color:gray;'>（無積點）</p>", unsafe_allow_html=True)
     
