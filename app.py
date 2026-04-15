@@ -110,4 +110,6 @@ if st.session_state.history:
     with c_clear:
         if st.button("⚠️ 2. 收攤清空今日紀錄", use_container_width=True):
             if os.path.exists(DATA_FILE):
-                os.remove(
+                os.remove(DATA_FILE) # 刪除硬碟裡的檔案
+            st.session_state.history = []
+            st.rerun()
