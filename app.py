@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="花田喜彘 POS 4.3.1", layout="wide")
+st.set_page_config(page_title="花田喜彘 POS 4.3.2 穩定版", layout="wide")
 
 st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:#E63946;text-align:center;background-color:#F1FAEE;padding:15px;border-radius:15px;}.stock-info{font-size:16px;color:#457B9D;font-weight:bold;}</style>", unsafe_allow_html=True)
 
@@ -45,28 +45,10 @@ def get_next_num(history):
 
 next_num = get_next_num(st.session_state.history)
 
-# --- 關鍵：四大分頁主程式 ---
 t1, t2, t3, t4 = st.tabs(["🏠 現場結帳", "📋 訂單明細", "📊 業績總覽", "📦 庫存管理"])
 
 with t1:
     st.title("花田喜彘 - 智慧結帳")
     c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
-    with c1: cust_name = st.text_input("👤 客人名稱", value=f"現場客 {next_num}", key="k1")
-    with c2: pay_m = st.selectbox("💳 支付", ["現金", "Line Pay", "轉帳"], key="k2")
-    with c3: disc = st.number_input("💸 折扣", min_value=0, value=0, step=5, key="k3")
-    with c4: is_p = st.toggle("⭐ 累積點數", value=True, key="k4")
-    st.write("---")
-    cola, colb, colc = st.columns([1, 2, 1])
-    with cola: cat = st.selectbox("📂 分類", list(product_catalog.keys()), key="k5")
-    with colb:
-        items = list(product_catalog[cat].keys())
-        sel_i = st.selectbox("🍎 品項", items, key="k6")
-        price = product_catalog[cat][sel_i]
-        rem = st.session_state.inventory.get(sel_i, 0)
-        st.markdown(f"<div class='stock-info'>現場庫存：{int(rem)} 包</div>", unsafe_allow_html=True)
-    with colc: qty = st.number_input("🔢 數量", min_value=1, max_value=max(1, int(rem)), value=1, key="k7")
-    if st.button("➕ 加入清單", disabled=(rem <= 0), use_container_width=True):
-        st.session_state.cart.append({"品項": sel_i, "單價": price, "數量": qty, "小計": price * qty})
-    st.write("---")
-    total_r = 0
-    for i,
+    with c1: cust_name = st.text_input("👤 客人名稱", value=f"現場客 {next_num}", key="main_cust_name")
+    with c2: pay_m = st.selectbox("💳 支付", ["現金", "Line Pay", "
