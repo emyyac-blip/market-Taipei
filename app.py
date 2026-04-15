@@ -3,10 +3,8 @@ import pandas as pd
 from datetime import datetime
 import os
 
-# 設定 iPad 滿版模式
 st.set_page_config(page_title="花田喜彘結帳系統", layout="wide")
 
-# 自訂 CSS
 st.markdown("""
     <style>
     .main-price {
@@ -18,33 +16,23 @@ st.markdown("""
         padding: 15px;
         border-radius: 15px;
     }
-    .stSelectbox label {
-        font-size: 18px !important;
-        font-weight: bold;
-    }
     </style>
     """, unsafe_allow_html=True)
 
-# 雲端資料檔案
 DATA_FILE = "today_sales.csv"
 
 def load_history():
     if os.path.exists(DATA_FILE):
-        try:
-            return pd.read_csv(DATA_FILE).to_dict('records')
-        except:
-            return []
+        try: return pd.read_csv(DATA_FILE).to_dict('records')
+        except: return []
     return []
 
 def save_history(history_list):
-    df = pd.DataFrame(history_list)
-    df.to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
+    pd.DataFrame(history_list).to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
 
-# 初始化記憶體
 if 'cart' not in st.session_state: st.session_state.cart = []
 if 'history' not in st.session_state: st.session_state.history = load_history()
 
-# === 根據您的 CSV 更新商品資料庫 ===
 product_catalog = {
     "🐷 白豬系列": {
         "梅花薄片(1.5 mm)": 175, "梅花厚片(6mm)": 175, "里肌薄片(1.5 mm)": 170,
@@ -56,7 +44,7 @@ product_catalog = {
     },
     "🐗 黑豬系列": {
         "黑豬梅花薄片(1.5 mm)": 198, "黑豬梅花厚片(6mm)": 198, "黑豬里肌薄片(1.5 mm)": 180,
-        "黑豬里肌厚片(6 mm)": 180, "黑豬五五花薄片(1.5 mm)": 215, "黑豬五花厚片(6 mm)": 215,
+        "黑豬里肌厚片(6 mm)": 180, "黑豬五花薄片(1.5 mm)": 215, "黑豬五花厚片(6 mm)": 215,
         "黑豬龍骨": 118, "黑豬梅花排骨": 215, "黑豬老鼠肉": 165, "黑豬松坂肉": 395
     },
     "🌭 加工品系列": {
@@ -68,41 +56,27 @@ product_catalog = {
 
 st.title("🛒 花田喜彘 - 希望廣場 POS 3.3")
 
-# 1. 客戶資訊
 c_name, c_disc = st.columns(2)
-with c_name:
-    customer_name = st.text_input("👤 客人名稱", value="現場客")
-with c_disc:
-    discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
+with c_name: customer_name = st.text_input("👤 客人名稱", value="現場客")
+with c_disc: discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
 
 st.write("---")
-
-# 2. 分類點單區
 col_cat, col_item, col_qty = st.columns([1, 2, 1])
 
 with col_cat:
     category = st.selectbox("📂 分類", list(product_catalog.keys()))
-
 with col_item:
     item_options = list(product_catalog[category].keys())
     selected_item = st.selectbox("🍎 品項", item_options)
     unit_price = product_catalog[category][selected_item]
-
 with col_qty:
     qty = st.number_input("🔢 數量", min_value=1, value=1)
     st.write(f"單價: ${unit_price}")
 
 if st.button("➕ 加入清單", use_container_width=True):
-    st.session_state.cart.append({
-        "品項": f"[{category[2:4]}] {selected_item}",
-        "單價": unit_price,
-        "數量": qty,
-        "小計": unit_price * qty
-    })
+    st.session_state.cart.append({"品項": f"[{category[2:4]}] {selected_item}", "單價": unit_price, "數量": qty, "小計": unit_price * qty})
 
 st.write("---")
-
-# 3. 購物車顯示
 total_raw = 0
 if st.session_state.cart:
     for i, item in enumerate(st.session_state.cart):
@@ -114,14 +88,17 @@ if st.session_state.cart:
             st.session_state.cart.pop(i)
             st.rerun()
 
-# 4. 總額計算
 final_total = max(0, total_raw - discount)
 st.markdown(f'<div class="main-price">${final_total:,}</div>', unsafe_allow_html=True)
 
-# 5. 結帳與存檔
 if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width=True):
     if st.session_state.cart:
-        order_info = {
-            "時間": datetime.now().strftime("%H:%M:%S"),
-            "客戶": customer_name,
-            "明細": str([f"{
+        order_info = {"時間": datetime.now().strftime("%H:%M:%S"), "客戶": customer_name, "明細": str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收": final_total}
+        st.session_state.history.append(order_info)
+        save_history(st.session_state.history)
+        st.session_state.cart = []
+        st.rerun()
+
+st.write("---")
+if st.session_state.history:
+    st.subheader("📊 今日結帳報
