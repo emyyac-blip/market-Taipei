@@ -3,14 +3,13 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="花田 POS 修復版", layout="wide")
+st.set_page_config(page_title="花田 POS 智慧版", layout="wide")
 
-# --- 💡 強制修復區：如果網頁打不開，請點下面這個按鈕 ---
-if st.button("🔥 [系統出錯時點我] 強制重置所有資料檔案"):
-    for f in ["sales.csv", "stock.csv", "today_sales.csv", "inventory_settings.csv"]:
+# --- 💡 系統修復工具 (若畫面異常再點) ---
+if st.button("🔧 系統全面重置 (會刪除庫存)"):
+    for f in ["sales_v2.csv", "stock_v2.csv", "sales.csv", "stock.csv"]:
         if os.path.exists(f): os.remove(f)
     st.rerun()
-# --------------------------------------------------
 
 st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:#E63946;text-align:center;background-color:#F1FAEE;padding:15px;border-radius:15px;}</style>", unsafe_allow_html=True)
 
@@ -33,7 +32,9 @@ menu = {
 
 all_i = []
 for c in menu: all_i.extend(list(menu[c].keys()))
-if k_df.empty: k_df = pd.DataFrame({"品項":all_i, "初始":0, "補貨":0})
+if k_df.empty:
+    k_df = pd.DataFrame({"品項":all_i, "初始":0, "補貨":0})
+    k_df.to_csv(K_F, index=False)
 
 def cur_s(kd, hd):
     m = kd.set_index("品項")[["初始", "補貨"]].sum(axis=1).to_dict()
@@ -88,14 +89,17 @@ with t1:
         st.table(h_df[cols].tail(5).iloc[::-1])
 
 with t2:
-    st.subheader("📦 庫存設定"); ed = st.data_editor(k_df, use_container_width=True, hide_index=True)
+    st.subheader("📦 庫存設定")
+    ed = st.data_editor(k_df, use_container_width=True, hide_index=True)
     if st.button("💾 儲存庫存"): ed.to_csv(K_F, index=False); st.rerun()
 
 with t3:
-    st.subheader("📊 業績總計")
+    st.subheader("📊 業績總結")
     if not h_df.empty:
-        st.metric("今日總營收", f"${h_df['實收'].sum():,}")
-        if st.button("⚠️ 收攤清空資料"):
+        st.metric("今日總營業額", f"${h_df['實收'].sum():,}")
+        st.write("---")
+        # 💡 重點修改處：這裡只會刪除業績檔案 S_F，不會刪除庫存檔案 K_F
+        if st.button("⚠️ 收攤清營業額 (保留庫存)"):
             if os.path.exists(S_F): os.remove(S_F)
-            if os.path.exists(K_F): os.remove(K_F)
+            st.success("今日營業額已清空，庫存數字已保留。")
             st.rerun()
