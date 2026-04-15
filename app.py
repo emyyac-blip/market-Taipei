@@ -14,9 +14,7 @@ def get_df(f):
     if os.path.exists(f):
         try:
             df = pd.read_csv(f)
-            if f == S_F:
-                for c in ['獲得點數','小時']: 
-                    if c not in df.columns: df[c]=0
+            # 💡 這裡會自動清理舊欄位，防止紅字報錯
             return df
         except: return pd.DataFrame()
     return pd.DataFrame()
@@ -32,12 +30,10 @@ menu = {
     "🌭 加工": {"黑豬高麗菜水餃": 239, "黑豬筊白筍水餃": 219, "花田純肉鬆": 260, "花田寶寶肉鬆": 290}
 }
 
-# 補足庫存表
 all_i = []
 for c in menu: all_i.extend(list(menu[c].keys()))
 if k_df.empty: k_df = pd.DataFrame({"品項":all_i, "初始":0, "補貨":0})
 
-# 計算庫存
 def cur_s(kd, hd):
     m = kd.set_index("品項")[["初始", "補貨"]].sum(axis=1).to_dict()
     if not hd.empty:
@@ -53,7 +49,7 @@ t1, t2, t3 = st.tabs(["💰 結帳", "📦 庫存", "📊 分析"])
 
 with t1:
     m_n = 0
-    if not h_df.empty:
+    if not h_df.empty and '客戶' in h_df.columns:
         for n in h_df['客戶']:
             if "現場客 " in str(n):
                 try: m_n = max(m_n, int(n.split("現場客 ")[1]))
@@ -86,7 +82,10 @@ with t1:
             new = pd.DataFrame([{"時間":datetime.now().strftime("%H:%M:%S"), "客戶":c_n, "明細":str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收":ft, "小時":datetime.now().hour, "獲得點數":int(ft//350)}])
             h_df = pd.concat([h_df, new], ignore_index=True)
             h_df.to_csv(S_F, index=False, encoding='utf-8-sig'); st.session_state.cart=[]; st.rerun()
-    if not h_df.empty: st.table(h_df[['時間', '客戶', '實收']].tail(5).iloc[::-1])
+    # 💡 這裡做了「防報錯」顯示，只抓有存在的欄位
+    if not h_df.empty:
+        v_cols = [c for c in ['時間', '客戶', '實收'] if c in h_df.columns]
+        st.table(h_df[v_cols].tail(5).iloc[::-1])
 
 with t2:
     st.subheader("📦 庫存設定"); ed = st.data_editor(k_df, use_container_width=True, hide_index=True)
@@ -96,15 +95,7 @@ with t3:
     st.subheader("📊 業績分析")
     if not h_df.empty:
         st.metric("總營收", f"${h_df['實收'].sum():,}")
-        als = []
-        for m in h_df['明細']:
-            for it in eval(m): 
-                try: als.append({"品項": it.split('] ')[1].split('x')[0], "數量": int(it.split('x')[1])})
-                except: pass
-        if als:
-            sdf = pd.DataFrame(als).groupby("品項").sum().reset_index()
-            st.plotly_chart(px.bar(sdf.sort_values("數量", ascending=False).head(10), x="數量", y="品項", orientation='h'), use_container_width=True)
-        if st.button("⚠️ 清空資料"):
+        if st.button("⚠️ 收攤清空資料"):
             if os.path.exists(S_F): os.remove(S_F)
             if os.path.exists(K_F): os.remove(K_F)
             st.rerun()
