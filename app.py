@@ -98,4 +98,13 @@ with t3:
         st.metric("總營收", f"${h_df['實收'].sum():,}")
         als = []
         for m in h_df['明細']:
-            for it in eval(m): als.append({"品項": it.split('] ')[1].split('x')[0], "數量
+            for it in eval(m): 
+                try: als.append({"品項": it.split('] ')[1].split('x')[0], "數量": int(it.split('x')[1])})
+                except: pass
+        if als:
+            sdf = pd.DataFrame(als).groupby("品項").sum().reset_index()
+            st.plotly_chart(px.bar(sdf.sort_values("數量", ascending=False).head(10), x="數量", y="品項", orientation='h'), use_container_width=True)
+        if st.button("⚠️ 清空資料"):
+            if os.path.exists(S_F): os.remove(S_F)
+            if os.path.exists(K_F): os.remove(K_F)
+            st.rerun()
