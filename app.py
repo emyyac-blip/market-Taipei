@@ -11,7 +11,7 @@ if st.button("🔧 系統全面重置 (包含刪除庫存)"):
         if os.path.exists(f): os.remove(f)
     st.rerun()
 
-st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:#E63946;text-align:center;background-color:#F1FAEE;padding:15px;border-radius:15px;}</style>", unsafe_allow_html=True)
+st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:#E63946;text-align:center;background-color:#F1FAEE;padding:15px;border-radius:15px;}.points-active{color:#457B9D;font-weight:bold;text-align:center;font-size:20px;}</style>", unsafe_allow_html=True)
 
 S_F, K_F = "sales_v2.csv", "stock_v2.csv"
 
@@ -19,7 +19,8 @@ def get_df(f):
     if os.path.exists(f):
         try:
             df = pd.read_csv(f)
-            if f == S_F and not df.empty and '支付方式' not in df.columns: df['支付方式'] = "現金"
+            for c in ['支付方式', '獲得點數']:
+                if c not in df.columns: df[c] = "現金" if c == '支付方式' else 0
             return df
         except: return pd.DataFrame()
     return pd.DataFrame()
@@ -50,7 +51,6 @@ def cur_s(kd, hd):
             except: pass
     return m
 
-# --- 這裡變成了四個分頁 ---
 t1, t2, t3, t4 = st.tabs(["💰 快速結帳", "📜 訂單紀錄", "📦 庫存管理", "📊 業績分析"])
 
 with t1:
@@ -62,10 +62,12 @@ with t1:
                 except: pass
     st_m = cur_s(k_df, h_df)
     
-    c1, c2, c3 = st.columns(3)
-    with c1: c_n = st.text_input("👤 客戶", value=f"現場客 {m_n+1}")
+    # --- 頂部設定區 ---
+    c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
+    with c1: c_n = st.text_input("👤 客戶名稱", value=f"現場客 {m_n+1}")
     with c2: pay_method = st.selectbox("💳 支付", ["現金", "LINE Pay"])
-    with c3: dsc = st.number_input("💸 折扣", min_value=0, step=5)
+    with c3: is_member = st.checkbox("🌟 會員積點")
+    with c4: dsc = st.number_input("💸 折扣", min_value=0, step=5)
     
     st.write("---")
     ca, cb, cc = st.columns([1, 2, 1])
@@ -88,23 +90,25 @@ with t1:
     
     ft = max(0, tr - dsc)
     st.markdown(f'<div class="main-price">${ft:,}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div style="text-align:center">⭐ 點數：{ft//350} | 方式：{pay_method}</div>', unsafe_allow_html=True)
+    
+    # 顯示點數邏輯
+    final_pts = int(ft // 350) if is_member else 0
+    if is_member:
+        st.markdown(f'<div class="points-active">✨ 會員本次累積：{final_pts} 點</div>', unsafe_allow_html=True)
+    else:
+        st.write("<p style='text-align:center; color:gray;'>散客結帳中（無積點）</p>", unsafe_allow_html=True)
     
     if st.button("✅ 結帳完成", type="primary", use_container_width=True):
         if st.session_state.cart:
-            new = pd.DataFrame([{"時間":datetime.now().strftime("%H:%M:%S"), "客戶":c_n, "支付方式":pay_method, "明細":str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收":ft, "獲得點數":int(ft//350)}])
+            new = pd.DataFrame([{"時間":datetime.now().strftime("%H:%M:%S"), "客戶":c_n, "支付方式":pay_method, "明細":str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收":ft, "獲得點數":final_pts}])
             h_df = pd.concat([h_df, new], ignore_index=True)
             h_df.to_csv(S_F, index=False, encoding='utf-8-sig'); st.session_state.cart=[]; st.rerun()
 
 with t2:
     st.subheader("📜 今日訂單明細")
     if not h_df.empty:
-        # 顯示所有歷史訂單，最新的在上面
-        view_df = h_df.copy()
-        cols = [c for c in ['時間', '客戶', '支付方式', '實收', '獲得點數', '明細'] if c in view_df.columns]
-        st.dataframe(view_df[cols].iloc[::-1], use_container_width=True, hide_index=True)
-    else:
-        st.info("目前尚無訂單紀錄")
+        st.dataframe(h_df[['時間', '客戶', '支付方式', '實收', '獲得點數', '明細']].iloc[::-1], use_container_width=True, hide_index=True)
+    else: st.info("目前尚無訂單")
 
 with t3:
     st.subheader("📦 庫存盤點設定")
@@ -117,12 +121,9 @@ with t4:
         c1, c2 = st.columns(2)
         c1.metric("今日總營收", f"${h_df['實收'].sum():,}")
         c2.metric("總成交筆數", f"{len(h_df)} 筆")
-        
-        st.write("### 💰 支付方式統計")
+        st.write("---")
         pay_sum = h_df.groupby("支付方式")["實收"].sum().reset_index()
         st.table(pay_sum)
-        
-        st.write("---")
         if st.button("⚠️ 收攤清空營業額 (保留庫存)"):
             if os.path.exists(S_F): os.remove(S_F)
             st.rerun()
