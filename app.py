@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 # 1. 頁面設定
-st.set_page_config(page_title="花田喜彘 POS", layout="wide")
+st.set_page_config(page_title="花田喜彘 POS 點數版", layout="wide")
 
 st.markdown("""
     <style>
@@ -16,6 +16,13 @@ st.markdown("""
         background-color: #F1FAEE;
         padding: 15px;
         border-radius: 15px;
+    }
+    .points-tag {
+        font-size: 24px;
+        color: #1D3557;
+        text-align: center;
+        font-weight: bold;
+        margin-top: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -35,7 +42,7 @@ def save_history(history_list):
 if 'cart' not in st.session_state: st.session_state.cart = []
 if 'history' not in st.session_state: st.session_state.history = load_history()
 
-# 3. 更新商品資料庫 (依照 202604 CSV 檔案)
+# 3. 最新商品資料庫 (2026.04 版)
 product_catalog = {
     "🐷 白豬系列": {
         "梅花薄片(1.5 mm)": 175, "梅花厚片(6mm)": 175, "里肌薄片(1.5 mm)": 170,
@@ -56,11 +63,11 @@ product_catalog = {
     }
 }
 
-st.title("🛒 花田喜彘 - 2026.04 希望廣場版")
+st.title("🛒 花田喜彘 - 會員積點 POS")
 
 # --- 結帳區域 ---
 c_name, c_disc = st.columns(2)
-with c_name: customer_name = st.text_input("👤 客人名稱", value="現場客")
+with c_name: customer_name = st.text_input("👤 客人名稱/手機", value="現場客")
 with c_disc: discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
 
 st.write("---")
@@ -91,13 +98,23 @@ if st.session_state.cart:
             st.session_state.cart.pop(i)
             st.rerun()
 
+# 計算總額與點數 (每 350 元 1 點)
 final_total = max(0, total_raw - discount)
+earned_points = final_total // 350
+
 st.markdown(f'<div class="main-price">${final_total:,}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="points-tag">⭐ 本次可累積：{int(earned_points)} 點</div>', unsafe_allow_html=True)
 
 if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width=True):
     if st.session_state.cart:
         items_summary = [f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]
-        order_info = {"時間": datetime.now().strftime("%H:%M:%S"), "客戶": customer_name, "明細": str(items_summary), "實收": final_total}
+        order_info = {
+            "時間": datetime.now().strftime("%H:%M:%S"),
+            "客戶": customer_name,
+            "明細": str(items_summary),
+            "實收": final_total,
+            "獲得點數": int(earned_points)
+        }
         st.session_state.history.append(order_info)
         save_history(st.session_state.history)
         st.session_state.cart = []
@@ -106,13 +123,13 @@ if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width
 # --- 報表區域 ---
 st.write("---")
 if st.session_state.history:
-    st.subheader("📊 今日已結帳清單")
+    st.subheader("📊 今日已結帳清單 (含積點紀錄)")
     df_hist = pd.DataFrame(st.session_state.history)
     st.table(df_hist)
     c_down, c_clear = st.columns(2)
     with c_down:
         csv_data = df_hist.to_csv(index=False).encode('utf-8-sig')
-        st.download_button("📥 下載今日 Excel 報表", data=csv_data, file_name=f"花田報表_{datetime.now().strftime('%m%d')}.csv", use_container_width=True)
+        st.download_button("📥 下載積點報表", data=csv_data, file_name=f"花田點數報表_{datetime.now().strftime('%m%d')}.csv", use_container_width=True)
     with c_clear:
         if st.button("⚠️ 收攤清空資料", use_container_width=True):
             if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
