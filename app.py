@@ -117,4 +117,27 @@ with tab1:
         st.subheader("📊 今日結帳紀錄")
         # 💡 這行加了安全性檢查，確保只顯示存在的欄位
         cols_to_show = [c for c in ['時間', '客戶', '實收', '獲得點數'] if c in history_df.columns]
-        st.table(history_df[cols_to_show
+        st.table(history_df[cols_to_show].tail(10).iloc[::-1])
+
+with tab2:
+    st.subheader("📦 庫存設定")
+    ed_df = st.data_editor(stock_df, use_container_width=True, hide_index=True)
+    if st.button("💾 儲存庫存"):
+        save_data(ed_df, STOCK_FILE); st.success("已更新！"); st.rerun()
+
+with tab3:
+    st.subheader("📊 業績分析")
+    if not history_df.empty:
+        st.metric("總營業額", f"${history_df['實收'].sum():,}")
+        all_s = []
+        for m in history_df['明細']:
+            for itm in eval(m):
+                name = itm.split('] ')[1].split('x')[0]
+                all_s.append({"品項": name, "數量": int(itm.split('x')[1])})
+        s_df = pd.DataFrame(all_s).groupby("品項").sum().reset_index()
+        st.plotly_chart(px.bar(s_df.sort_values("數量", ascending=False).head(10), x="數量", y="品項", orientation='h', title="Top 10 商品"), use_container_width=True)
+        
+        if st.button("⚠️ 收攤清空資料"):
+            if os.path.exists(SALES_FILE): os.remove(SALES_FILE)
+            if os.path.exists(STOCK_FILE): os.remove(STOCK_FILE)
+            st.rerun()
