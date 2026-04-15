@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="花田 POS 完整版", layout="wide")
+st.set_page_config(page_title="花田 POS 旗艦版", layout="wide")
 
 # --- 💡 系統重置工具 ---
 if st.button("🔧 系統全面重置 (包含刪除庫存)"):
@@ -50,7 +50,8 @@ def cur_s(kd, hd):
             except: pass
     return m
 
-t1, t2, t3 = st.tabs(["💰 結帳", "📦 庫存", "📊 分析"])
+# --- 這裡變成了四個分頁 ---
+t1, t2, t3, t4 = st.tabs(["💰 快速結帳", "📜 訂單紀錄", "📦 庫存管理", "📊 業績分析"])
 
 with t1:
     m_n = 0
@@ -63,7 +64,7 @@ with t1:
     
     c1, c2, c3 = st.columns(3)
     with c1: c_n = st.text_input("👤 客戶", value=f"現場客 {m_n+1}")
-    with c2: pay_method = st.selectbox("💳 支付方式", ["現金", "LINE Pay"])
+    with c2: pay_method = st.selectbox("💳 支付", ["現金", "LINE Pay"])
     with c3: dsc = st.number_input("💸 折扣", min_value=0, step=5)
     
     st.write("---")
@@ -94,27 +95,34 @@ with t1:
             new = pd.DataFrame([{"時間":datetime.now().strftime("%H:%M:%S"), "客戶":c_n, "支付方式":pay_method, "明細":str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收":ft, "獲得點數":int(ft//350)}])
             h_df = pd.concat([h_df, new], ignore_index=True)
             h_df.to_csv(S_F, index=False, encoding='utf-8-sig'); st.session_state.cart=[]; st.rerun()
-    
-    if not h_df.empty:
-        cols = [c for c in ['時間', '客戶', '支付方式', '實收'] if c in h_df.columns]
-        st.table(h_df[cols].tail(5).iloc[::-1])
 
 with t2:
-    st.subheader("📦 庫存設定")
+    st.subheader("📜 今日訂單明細")
+    if not h_df.empty:
+        # 顯示所有歷史訂單，最新的在上面
+        view_df = h_df.copy()
+        cols = [c for c in ['時間', '客戶', '支付方式', '實收', '獲得點數', '明細'] if c in view_df.columns]
+        st.dataframe(view_df[cols].iloc[::-1], use_container_width=True, hide_index=True)
+    else:
+        st.info("目前尚無訂單紀錄")
+
+with t3:
+    st.subheader("📦 庫存盤點設定")
     ed = st.data_editor(k_df, use_container_width=True, hide_index=True)
     if st.button("💾 儲存庫存"): ed.to_csv(K_F, index=False); st.rerun()
 
-with t3:
-    st.subheader("📊 業績總結")
+with t4:
+    st.subheader("📊 業績分析報表")
     if not h_df.empty:
-        st.metric("今日總營業額", f"${h_df['實收'].sum():,}")
+        c1, c2 = st.columns(2)
+        c1.metric("今日總營收", f"${h_df['實收'].sum():,}")
+        c2.metric("總成交筆數", f"{len(h_df)} 筆")
         
-        # 💳 支付方式統計
         st.write("### 💰 支付方式統計")
         pay_sum = h_df.groupby("支付方式")["實收"].sum().reset_index()
         st.table(pay_sum)
         
         st.write("---")
-        if st.button("⚠️ 收攤清營業額 (保留庫存)"):
+        if st.button("⚠️ 收攤清空營業額 (保留庫存)"):
             if os.path.exists(S_F): os.remove(S_F)
             st.rerun()
