@@ -66,7 +66,7 @@ with t1:
     c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
     with c1: c_n = st.text_input("👤 客戶名稱", value=f"現場客 {m_n+1}")
     with c2: pay_method = st.selectbox("💳 支付", ["現金", "LINE Pay"])
-    with c3: is_member = st.checkbox("🌟 會員積點")
+    with c3: is_member = st.checkbox("🌟 積點")
     with c4: dsc = st.number_input("💸 折扣", min_value=0, step=5)
     
     st.write("---")
