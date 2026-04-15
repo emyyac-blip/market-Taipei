@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="花田喜彘 POS 4.3.2 穩定版", layout="wide")
+st.set_page_config(page_title="花田喜彘 POS 4.3.3 最終穩定版", layout="wide")
 
 st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:#E63946;text-align:center;background-color:#F1FAEE;padding:15px;border-radius:15px;}.stock-info{font-size:16px;color:#457B9D;font-weight:bold;}</style>", unsafe_allow_html=True)
 
@@ -50,5 +50,6 @@ t1, t2, t3, t4 = st.tabs(["🏠 現場結帳", "📋 訂單明細", "📊 業績
 with t1:
     st.title("花田喜彘 - 智慧結帳")
     c1, c2, c3, c4 = st.columns([2, 1, 1, 1])
-    with c1: cust_name = st.text_input("👤 客人名稱", value=f"現場客 {next_num}", key="main_cust_name")
-    with c2: pay_m = st.selectbox("💳 支付", ["現金", "Line Pay", "
+    with c1: cust_name = st.text_input("👤 客人名稱", value=f"現場客 {next_num}", key="cust_name_v433")
+    with c2: pay_m = st.selectbox("💳 支付", ["現金", "Line Pay", "轉帳"], key="pay_m_v433")
+    with c3: disc = st.number_input("
