@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 # 1. 頁面設定
-st.set_page_config(page_title="花田喜彘 POS 流水號版", layout="wide")
+st.set_page_config(page_title="花田喜彘 POS 修正版", layout="wide")
 
 st.markdown("""
     <style>
@@ -32,20 +32,23 @@ DATA_FILE = "today_sales.csv"
 
 def load_history():
     if os.path.exists(DATA_FILE):
-        try: return pd.read_csv(DATA_FILE).to_dict('records')
-        except: return []
+        try:
+            return pd.read_csv(DATA_FILE).to_dict('records')
+        except:
+            return []
     return []
 
 def save_history(history_list):
-    pd.DataFrame(history_list).to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
+    df = pd.DataFrame(history_list)
+    df.to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
 
-# 初始化資料
+# 初始化記憶體
 if 'cart' not in st.session_state: st.session_state.cart = []
 if 'history' not in st.session_state: st.session_state.history = load_history()
 
-# 💡 計算自動流水號：看今天歷史紀錄有幾筆，下一筆就是 n+1
-next_guest_number = len(st.session_state.history) + 1
-default_name = f"現場客 {next_guest_number}"
+# 計算自動流水號
+next_num = len(st.session_state.history) + 1
+default_name = f"現場客 {next_num}"
 
 # 3. 商品資料庫 (2026.04 希望廣場版)
 product_catalog = {
@@ -73,7 +76,6 @@ st.title("🛒 花田喜彘 - 高效率流水號 POS")
 # --- 結帳區域 ---
 c_name, c_disc = st.columns(2)
 with c_name:
-    # 這裡會自動填入 現場客X，但也可以手動改掉
     customer_name = st.text_input("👤 客人名稱/手機", value=default_name)
 with c_disc:
     discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
@@ -106,24 +108,8 @@ if st.session_state.cart:
             st.session_state.cart.pop(i)
             st.rerun()
 
-# 點數規則：每 350 元 1 點
 final_total = max(0, total_raw - discount)
 earned_points = final_total // 350
 
 st.markdown(f'<div class="main-price">${final_total:,}</div>', unsafe_allow_html=True)
-st.markdown(f'<div class="points-tag">⭐ 本次可累積：{int(earned_points)} 點</div>', unsafe_allow_html=True)
-
-if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width=True):
-    if st.session_state.cart:
-        items_summary = [f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]
-        order_info = {
-            "單號": next_guest_number,
-            "時間": datetime.now().strftime("%H:%M:%S"),
-            "客戶": customer_name,
-            "明細": str(items_summary),
-            "實收": final_total,
-            "獲得點數": int(earned_points)
-        }
-        st.session_state.history.append(order_info)
-        save_history(st.session_state.history)
-        st.session_
+st.markdown(f'<div class="points-tag">⭐ 本
