@@ -1,110 +1,100 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
 
 # 設定 iPad 滿版模式
 st.set_page_config(page_title="花田喜彘結帳系統", layout="wide")
 
-# 自訂 CSS 讓字體變大
+# 自訂 CSS
 st.markdown("""
     <style>
     .main-price {
-        font-size: 80px !important;
+        font-size: 70px !important;
         font-weight: bold;
         color: #E63946;
         text-align: center;
         background-color: #F1FAEE;
-        padding: 20px;
+        padding: 15px;
         border-radius: 15px;
-        margin-bottom: 20px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛒 花田喜彘 - 市集 POS 結帳機 (3.0 專業版)")
+# 1. 初始化記憶體
+if 'cart' not in st.session_state: st.session_state.cart = []
+if 'history' not in st.session_state: st.session_state.history = []
 
-# 建立「購物車記憶」
-if 'cart' not in st.session_state:
-    st.session_state.cart = []
-
-# 真實商品資料庫
+# 2. 商品資料
 products = {
-    "黑豬梅花薄片 (200g)": 198,
-    "黑豬梅花厚片 (200g)": 198,
-    "黑豬里肌薄片 (200g)": 180,
-    "黑豬里肌厚片 (200g)": 180,
-    "黑豬五花薄片 (200g)": 215,
-    "黑豬五花厚片 (200g)": 215,
-    "黑豬龍骨 (300g)": 118,
-    "黑豬梅花排骨 (300g)": 215,
-    "老鼠肉 (220g)": 165,
-    "黑豬原味貢丸": 140,
-    "黑豬香菇貢丸": 155
+    "黑豬梅花薄片 (200g)": 198, "黑豬梅花厚片 (200g)": 198,
+    "黑豬里肌薄片 (200g)": 180, "黑豬里肌厚片 (200g)": 180,
+    "黑豬五花薄片 (200g)": 215, "黑豬五花厚片 (200g)": 215,
+    "黑豬龍骨 (300g)": 118, "黑豬梅花排骨 (300g)": 215,
+    "老鼠肉 (220g)": 165, "黑豬原味貢丸": 140, "黑豬香菇貢丸": 155
 }
 
-# === 新增：客人資訊與折扣區 ===
-col_name, col_discount = st.columns(2)
-with col_name:
-    customer_name = st.text_input("👤 客人名稱 / 備註 (選填)", placeholder="例如：李太太、現場客、預留")
-with col_discount:
-    discount = st.number_input("💸 折扣金額 (元)", min_value=0, value=0, step=10)
+st.title("🛒 花田喜彘 - 市集 POS 3.1 版")
+
+# 3. 輸入區
+c_name, c_disc = st.columns(2)
+with c_name: customer_name = st.text_input("👤 客人名稱", value="現場客")
+with c_disc: discount = st.number_input("💸 折扣金額", min_value=0, value=0)
 
 st.write("---")
 
-# === 上方區域：點單輸入區 ===
 col1, col2, col3 = st.columns([2, 1, 1])
-
 with col1:
     selected_item = st.selectbox("🍎 選擇品項", list(products.keys()))
-    unit_price = products[selected_item]
-
 with col2:
-    qty = st.number_input("🔢 數量", min_value=1, value=1, step=1)
-
+    qty = st.number_input("🔢 數量", min_value=1, value=1)
 with col3:
-    st.write("") # 排版用空白
+    st.write("")
     st.write("")
     if st.button("➕ 加入清單", use_container_width=True):
         st.session_state.cart.append({
-            "name": selected_item,
-            "price": unit_price,
-            "qty": qty,
-            "subtotal": unit_price * qty
+            "品項": selected_item, "單價": products[selected_item],
+            "數量": qty, "小計": products[selected_item] * qty
         })
 
+# 4. 顯示購物車
+total_raw = 0
+for item in st.session_state.cart:
+    total_raw += item['小計']
+    st.write(f"▪️ {item['品項']} x {item['數量']} = ${item['小計']}")
+
+# 5. 總金額
+final_total = max(0, total_raw - discount)
+st.markdown(f'<div class="main-price">${final_total:,}</div>', unsafe_allow_html=True)
+
+# 6. 結帳與儲存
+if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width=True):
+    if st.session_state.cart:
+        # 將這一單的總結存入歷史紀錄
+        order_info = {
+            "時間": datetime.now().strftime("%H:%M:%S"),
+            "客戶": customer_name,
+            "品項明細": str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]),
+            "原價": total_raw,
+            "折扣": discount,
+            "實收": final_total
+        }
+        st.session_state.history.append(order_info)
+        st.session_state.cart = [] # 清空購物車
+        st.rerun()
+
 st.write("---")
 
-# === 中間區域：顯示購物車清單 ===
-st.subheader("📋 目前結帳清單")
-
-total_amount = 0
-
-if len(st.session_state.cart) == 0:
-    st.info("清單目前是空的，請在上方選擇商品並點擊「加入清單」。")
-else:
-    for item in st.session_state.cart:
-        c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
-        c1.write(f"▪️ **{item['name']}**")
-        c2.write(f"單價 ${item['price']}")
-        c3.write(f"數量: {item['qty']}")
-        c4.write(f"小計 **${item['subtotal']}**")
-        total_amount += item['subtotal']
-
-st.write("---")
-
-# === 計算最終金額 ===
-final_amount = total_amount - discount
-if final_amount < 0:
-    final_amount = 0
-
-# === 下方區域：巨大總金額與清空按鈕 ===
-st.markdown("### 💰 應收總金額")
-
-# 如果有折扣，顯示原價讓結帳人員核對
-if discount > 0:
-    st.markdown(f"*(原價 ${total_amount} - 折扣 ${discount})*")
-
-st.markdown(f'<div class="main-price">${final_amount:,}</div>', unsafe_allow_html=True)
-
-if st.button("🗑️ 結帳完成 / 下一位客人", type="primary", use_container_width=True):
-    # 這裡未來會加入「存入 Google 試算表」的指令
-    st.session_state.cart = []
-    st.rerun()
+# 7. 今日戰報與下載
+if st.session_state.history:
+    st.subheader("📊 今日已結帳紀錄")
+    df = pd.DataFrame(st.session_state.history)
+    st.table(df)
+    
+    # 下載按鈕
+    csv = df.to_csv(index=False).encode('utf-8-sig')
+    st.download_button(
+        label="📥 下載今日交易報表 (Excel可開)",
+        data=csv,
+        file_name=f"花田喜彘_{datetime.now().strftime('%m%d')}_報表.csv",
+        mime="text/csv",
+    )
