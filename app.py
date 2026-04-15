@@ -2,28 +2,29 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import plotly.express as px
 
-st.set_page_config(page_title="花田 POS", layout="wide")
+st.set_page_config(page_title="花田 POS 修復版", layout="wide")
+
+# --- 💡 強制修復區：如果網頁打不開，請點下面這個按鈕 ---
+if st.button("🔥 [系統出錯時點我] 強制重置所有資料檔案"):
+    for f in ["sales.csv", "stock.csv", "today_sales.csv", "inventory_settings.csv"]:
+        if os.path.exists(f): os.remove(f)
+    st.rerun()
+# --------------------------------------------------
+
 st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:#E63946;text-align:center;background-color:#F1FAEE;padding:15px;border-radius:15px;}</style>", unsafe_allow_html=True)
 
-# 檔案設定
-S_F, K_F = "sales.csv", "stock.csv"
+S_F, K_F = "sales_v2.csv", "stock_v2.csv"
 
 def get_df(f):
     if os.path.exists(f):
-        try:
-            df = pd.read_csv(f)
-            # 💡 這裡會自動清理舊欄位，防止紅字報錯
-            return df
+        try: return pd.read_csv(f)
         except: return pd.DataFrame()
     return pd.DataFrame()
 
-# 初始化
 if 'cart' not in st.session_state: st.session_state.cart = []
 h_df, k_df = get_df(S_F), get_df(K_F)
 
-# 品項與價格
 menu = {
     "🐷 白豬": {"梅花薄片": 175, "梅花厚片": 175, "里肌薄片": 170, "里肌厚片": 170, "五花薄片": 195, "老鼠肉": 165, "小里肌": 175, "霜降肉": 245, "松坂肉": 360, "梅花肉丁": 240, "龍骨": 109, "尾冬骨": 160, "梅花排骨": 210, "小戰斧": 285, "棒棒腿": 220, "德國豬腳": 252, "月亮軟骨": 250, "豬肉絲": 130, "豬絞肉": 130},
     "🐗 黑豬": {"黑豬梅花薄片": 198, "黑豬梅花厚片": 198, "黑豬里肌薄片": 180, "黑豬里肌厚片": 180, "黑豬五花薄片": 215, "黑豬五花厚片": 215, "黑豬龍骨": 118, "黑豬梅花排骨": 230, "黑豬帶皮五花條": 265, "黑豬豬腳": 270, "黑豬小里肌": 190, "黑豬霜降肉": 285, "黑豬松坂肉": 390, "黑豬豬肉絲": 140, "黑豬豬絞肉": 140},
@@ -36,7 +37,7 @@ if k_df.empty: k_df = pd.DataFrame({"品項":all_i, "初始":0, "補貨":0})
 
 def cur_s(kd, hd):
     m = kd.set_index("品項")[["初始", "補貨"]].sum(axis=1).to_dict()
-    if not hd.empty:
+    if not hd.empty and '明細' in hd.columns:
         for _, r in hd.iterrows():
             try:
                 for it in eval(r['明細']):
@@ -79,22 +80,21 @@ with t1:
     st.markdown(f'<div style="text-align:center">⭐ 點數：{ft//350}</div>', unsafe_allow_html=True)
     if st.button("✅ 結帳", type="primary", use_container_width=True):
         if st.session_state.cart:
-            new = pd.DataFrame([{"時間":datetime.now().strftime("%H:%M:%S"), "客戶":c_n, "明細":str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收":ft, "小時":datetime.now().hour, "獲得點數":int(ft//350)}])
+            new = pd.DataFrame([{"時間":datetime.now().strftime("%H:%M:%S"), "客戶":c_n, "明細":str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收":ft, "獲得點數":int(ft//350)}])
             h_df = pd.concat([h_df, new], ignore_index=True)
             h_df.to_csv(S_F, index=False, encoding='utf-8-sig'); st.session_state.cart=[]; st.rerun()
-    # 💡 這裡做了「防報錯」顯示，只抓有存在的欄位
     if not h_df.empty:
-        v_cols = [c for c in ['時間', '客戶', '實收'] if c in h_df.columns]
-        st.table(h_df[v_cols].tail(5).iloc[::-1])
+        cols = [c for c in ['時間', '客戶', '實收'] if c in h_df.columns]
+        st.table(h_df[cols].tail(5).iloc[::-1])
 
 with t2:
     st.subheader("📦 庫存設定"); ed = st.data_editor(k_df, use_container_width=True, hide_index=True)
     if st.button("💾 儲存庫存"): ed.to_csv(K_F, index=False); st.rerun()
 
 with t3:
-    st.subheader("📊 業績分析")
+    st.subheader("📊 業績總計")
     if not h_df.empty:
-        st.metric("總營收", f"${h_df['實收'].sum():,}")
+        st.metric("今日總營收", f"${h_df['實收'].sum():,}")
         if st.button("⚠️ 收攤清空資料"):
             if os.path.exists(S_F): os.remove(S_F)
             if os.path.exists(K_F): os.remove(K_F)
