@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import os
-import plotly.express as px # 用來畫漂亮的圖表
+import plotly.express as px
 
 st.set_page_config(page_title="花田喜彘全能 POS", layout="wide")
 
@@ -13,7 +13,6 @@ st.markdown("<style>.main-price{font-size:70px!important;font-weight:bold;color:
 SALES_FILE = "today_sales.csv"
 STOCK_FILE = "inventory_settings.csv"
 
-# --- 資料處理函數 ---
 def load_data(file):
     if os.path.exists(file):
         try: return pd.read_csv(file)
@@ -28,22 +27,18 @@ if 'cart' not in st.session_state: st.session_state.cart = []
 history_df = load_data(SALES_FILE)
 stock_df = load_data(STOCK_FILE)
 
-# 商品清單 (2026.04 希望廣場)
 product_catalog = {
     "🐷 白豬系列": {"梅花薄片(1.5 mm)": 175, "梅花厚片(6mm)": 175, "里肌薄片(1.5 mm)": 170, "里肌厚片(6 mm)": 170, "五花薄片(1.5 mm)": 195, "老鼠肉(後腿心)": 165, "小里肌(腰內肉)": 175, "霜降肉": 245, "松坂肉": 360, "梅花肉丁": 240, "龍骨": 109, "尾冬骨": 160, "梅花排骨": 210, "小戰斧": 285, "棒棒腿(特別版3支入)": 220, "德國豬腳": 252, "月亮軟骨": 250, "豬肉絲": 130, "豬絞肉": 130},
     "🐗 黑豬系列": {"黑豬梅花薄片(1.5 mm)": 198, "黑豬梅花厚片(6mm)": 198, "黑豬里肌薄片(1.5 mm)": 180, "黑豬里肌厚片(6 mm)": 180, "黑豬五花薄片(1.5 mm)": 215, "黑豬五花厚片(6 mm)": 215, "黑豬龍骨": 118, "黑豬梅花排骨": 230, "黑豬帶皮五花肉條": 265, "黑豬豬腳": 270, "黑豬小里肌": 190, "黑豬霜降肉": 285, "黑豬松坂肉": 390, "黑豬豬肉絲": 140, "黑豬豬絞肉": 140},
     "🌭 加工品系列": {"黑豬高麗菜水餃": 239, "黑豬筊白筍水餃": 219, "花田純肉鬆": 260, "花田寶寶肉鬆": 290}
 }
 
-# 確保庫存檔有所有品項
 all_items = []
 for cat in product_catalog: all_items.extend(list(product_catalog[cat].keys()))
-
 if stock_df.empty:
     stock_df = pd.DataFrame({"品項": all_items, "初始庫存": 0, "補貨量": 0})
     save_data(stock_df, STOCK_FILE)
 
-# --- 計算剩餘庫存 ---
 def get_remaining_stock(stock_df, history_df):
     stock_map = stock_df.set_index("品項")[["初始庫存", "補貨量"]].sum(axis=1).to_dict()
     if not history_df.empty:
@@ -61,8 +56,8 @@ def get_remaining_stock(stock_df, history_df):
 tab1, tab2, tab3 = st.tabs(["💰 結帳櫃檯", "📦 庫存管理", "📊 業績分析"])
 
 with tab1:
-    # 智慧流水號
-    def get_next_num(history):
+    # 智慧流水號邏輯
+    def get_smart_num(history):
         max_n = 0
         if not history.empty:
             for n in history['客戶']:
@@ -73,7 +68,7 @@ with tab1:
                     except: pass
         return max_n + 1
     
-    next_num = get_next_num(history_df)
+    next_num = get_smart_num(history_df)
     
     col_n, col_d = st.columns(2)
     with col_n: customer_name = st.text_input("👤 客戶名稱", value=f"現場客 {next_num}")
@@ -103,54 +98,3 @@ with tab1:
         ca.write(f"▪️ {itm['品項']}")
         cb.write(f"${itm['單價']} x {itm['數量']}")
         t_raw += itm['小計']
-        if cc.button("移除", key=f"del_{i}"): st.session_state.cart.pop(i); st.rerun()
-    
-    f_total = max(0, t_raw - discount)
-    st.markdown(f'<div class="main-price">${f_total:,}</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="points-tag">⭐ 點數：{f_total//350} 點</div>', unsafe_allow_html=True)
-
-    if st.button("✅ 結帳完成", type="primary", use_container_width=True):
-        if st.session_state.cart:
-            new_row = {"時間": datetime.now().strftime("%H:%M:%S"), "客戶": customer_name, "明細": str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收": f_total, "小時": datetime.now().hour}
-            history_df = pd.concat([history_df, pd.DataFrame([new_row])], ignore_index=True)
-            save_data(history_df, SALES_FILE)
-            st.session_state.cart = []; st.rerun()
-
-with tab2:
-    st.subheader("📦 庫存快速調整")
-    st.info("在下方輸入今日帶貨量與補貨量，系統會自動在結帳頁面顯示剩餘包數。")
-    edited_df = st.data_editor(stock_df, use_container_width=True, hide_index=True)
-    if st.button("💾 儲存庫存設定"):
-        save_data(edited_df, STOCK_FILE)
-        st.success("庫存已更新！")
-        st.rerun()
-
-with tab3:
-    st.subheader("📊 今日業績即時分析")
-    if not history_df.empty:
-        # 1. 業績總額
-        st.metric("今日總營業額", f"${history_df['實收'].sum():,}")
-        
-        # 2. 熱銷排行 (拆解明細)
-        all_sold = []
-        for m in history_df['明細']:
-            for item in eval(m):
-                name = item.split('] ')[1].split('x')[0]
-                q = int(item.split('x')[1])
-                all_sold.append({"品項": name, "數量": q})
-        sold_df = pd.DataFrame(all_sold).groupby("品項").sum().reset_index()
-        
-        fig1 = px.bar(sold_df.sort_values("數量", ascending=False).head(10), x="數量", y="品項", orientation='h', title="🏆 Top 10 熱銷商品")
-        st.plotly_chart(fig1, use_container_width=True)
-        
-        # 3. 客流量分析 (按小時)
-        time_df = history_df.groupby("小時").size().reset_index(name="訂單數")
-        fig2 = px.line(time_df, x="小時", y="訂單數", title="📈 今日客流趨勢 (小時)", markers=True)
-        st.plotly_chart(fig2, use_container_width=True)
-        
-        if st.button("⚠️ 收攤清空所有資料"):
-            if os.path.exists(SALES_FILE): os.remove(SALES_FILE)
-            if os.path.exists(STOCK_FILE): os.remove(STOCK_FILE)
-            st.rerun()
-    else:
-        st.write("尚無結帳資料，請先開始結帳。")
