@@ -3,7 +3,8 @@ import pandas as pd
 from datetime import datetime
 import os
 
-st.set_page_config(page_title="花田喜彘結帳系統", layout="wide")
+# 1. 頁面設定
+st.set_page_config(page_title="花田喜彘 POS", layout="wide")
 
 st.markdown("""
     <style>
@@ -19,23 +20,22 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# 2. 資料存檔設定
 DATA_FILE = "today_sales.csv"
 
 def load_history():
     if os.path.exists(DATA_FILE):
-        try:
-            return pd.read_csv(DATA_FILE).to_dict('records')
-        except:
-            return []
+        try: return pd.read_csv(DATA_FILE).to_dict('records')
+        except: return []
     return []
 
 def save_history(history_list):
-    df = pd.DataFrame(history_list)
-    df.to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
+    pd.DataFrame(history_list).to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
 
 if 'cart' not in st.session_state: st.session_state.cart = []
 if 'history' not in st.session_state: st.session_state.history = load_history()
 
+# 3. 更新商品資料庫 (依照 202604 CSV 檔案)
 product_catalog = {
     "🐷 白豬系列": {
         "梅花薄片(1.5 mm)": 175, "梅花厚片(6mm)": 175, "里肌薄片(1.5 mm)": 170,
@@ -48,22 +48,20 @@ product_catalog = {
     "🐗 黑豬系列": {
         "黑豬梅花薄片(1.5 mm)": 198, "黑豬梅花厚片(6mm)": 198, "黑豬里肌薄片(1.5 mm)": 180,
         "黑豬里肌厚片(6 mm)": 180, "黑豬五花薄片(1.5 mm)": 215, "黑豬五花厚片(6 mm)": 215,
-        "黑豬龍骨": 118, "黑豬梅花排骨": 215, "黑豬老鼠肉": 165, "黑豬松坂肉": 395
+        "黑豬龍骨": 118, "黑豬梅花排骨": 230, "黑豬帶皮五花肉條": 265, "黑豬豬腳": 270,
+        "黑豬小里肌": 190, "黑豬霜降肉": 285, "黑豬松坂肉": 390, "黑豬豬肉絲": 140, "黑豬豬絞肉": 140
     },
     "🌭 加工品系列": {
-        "原味貢丸": 140, "香菇貢丸": 155, "噴水肉丸": 160, "原味香腸": 160,
-        "黑胡椒香腸": 160, "蒜味香腸": 160, "馬告香腸": 190, "鹹豬肉": 170,
-        "培根 slice": 195, "原味肉鬆": 195, "海苔肉鬆": 195, "黑豬肉乾": 180
+        "黑豬高麗菜水餃": 239, "黑豬筊白筍水餃": 219, "花田純肉鬆": 260, "花田寶寶肉鬆": 290
     }
 }
 
-st.title("🛒 花田喜彘 - 希望廣場 POS 3.3")
+st.title("🛒 花田喜彘 - 2026.04 希望廣場版")
 
+# --- 結帳區域 ---
 c_name, c_disc = st.columns(2)
-with c_name:
-    customer_name = st.text_input("👤 客人名稱", value="現場客")
-with c_disc:
-    discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
+with c_name: customer_name = st.text_input("👤 客人名稱", value="現場客")
+with c_disc: discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
 
 st.write("---")
 col_cat, col_item, col_qty = st.columns([1, 2, 1])
@@ -79,12 +77,7 @@ with col_qty:
     st.write(f"單價: ${unit_price}")
 
 if st.button("➕ 加入清單", use_container_width=True):
-    st.session_state.cart.append({
-        "品項": f"[{category[2:4]}] {selected_item}",
-        "單價": unit_price,
-        "數量": qty,
-        "小計": unit_price * qty
-    })
+    st.session_state.cart.append({"品項": f"[{category[2:4]}] {selected_item}", "單價": unit_price, "數量": qty, "小計": unit_price * qty})
 
 st.write("---")
 total_raw = 0
@@ -104,29 +97,24 @@ st.markdown(f'<div class="main-price">${final_total:,}</div>', unsafe_allow_html
 if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width=True):
     if st.session_state.cart:
         items_summary = [f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]
-        order_info = {
-            "時間": datetime.now().strftime("%H:%M:%S"),
-            "客戶": customer_name,
-            "明細": str(items_summary),
-            "實收": final_total
-        }
+        order_info = {"時間": datetime.now().strftime("%H:%M:%S"), "客戶": customer_name, "明細": str(items_summary), "實收": final_total}
         st.session_state.history.append(order_info)
         save_history(st.session_state.history)
         st.session_state.cart = []
         st.rerun()
 
+# --- 報表區域 ---
 st.write("---")
 if st.session_state.history:
-    st.subheader("📊 今日結帳報表")
+    st.subheader("📊 今日已結帳清單")
     df_hist = pd.DataFrame(st.session_state.history)
     st.table(df_hist)
     c_down, c_clear = st.columns(2)
     with c_down:
         csv_data = df_hist.to_csv(index=False).encode('utf-8-sig')
-        st.download_button("📥 下載 Excel 報表", data=csv_data, file_name="花田報表.csv", use_container_width=True)
+        st.download_button("📥 下載今日 Excel 報表", data=csv_data, file_name=f"花田報表_{datetime.now().strftime('%m%d')}.csv", use_container_width=True)
     with c_clear:
-        if st.button("⚠️ 清空今日紀錄 (收攤按)", use_container_width=True):
-            if os.path.exists(DATA_FILE):
-                os.remove(DATA_FILE)
+        if st.button("⚠️ 收攤清空資料", use_container_width=True):
+            if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
             st.session_state.history = []
             st.rerun()
