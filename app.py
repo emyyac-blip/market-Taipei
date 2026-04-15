@@ -84,3 +84,30 @@ if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width
         order_info = {
             "時間": datetime.now().strftime("%H:%M:%S"),
             "客戶": customer_name,
+            "品項明細": str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]),
+            "原價": total_raw,
+            "折扣": discount,
+            "實收": final_total
+        }
+        st.session_state.history.append(order_info)
+        save_history(st.session_state.history) # 關鍵：馬上寫入硬碟
+        st.session_state.cart = [] # 清空上方購物車
+        st.rerun()
+
+st.write("---")
+
+# 7. 今日戰報與收攤管理
+if st.session_state.history:
+    st.subheader("📊 今日已結帳紀錄")
+    df = pd.DataFrame(st.session_state.history)
+    st.table(df)
+    
+    # 底部兩顆大按鈕：下載 與 清空
+    c_down, c_clear = st.columns(2)
+    with c_down:
+        csv = df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button("📥 1. 下載今日報表 (Excel)", data=csv, file_name=f"花田喜彘_{datetime.now().strftime('%m%d')}_報表.csv", mime="text/csv", use_container_width=True)
+    with c_clear:
+        if st.button("⚠️ 2. 收攤清空今日紀錄", use_container_width=True):
+            if os.path.exists(DATA_FILE):
+                os.remove(
