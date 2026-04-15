@@ -4,7 +4,7 @@ from datetime import datetime
 import os
 
 # 1. 頁面設定
-st.set_page_config(page_title="花田喜彘 POS 點數版", layout="wide")
+st.set_page_config(page_title="花田喜彘 POS 流水號版", layout="wide")
 
 st.markdown("""
     <style>
@@ -39,10 +39,15 @@ def load_history():
 def save_history(history_list):
     pd.DataFrame(history_list).to_csv(DATA_FILE, index=False, encoding='utf-8-sig')
 
+# 初始化資料
 if 'cart' not in st.session_state: st.session_state.cart = []
 if 'history' not in st.session_state: st.session_state.history = load_history()
 
-# 3. 最新商品資料庫 (2026.04 版)
+# 💡 計算自動流水號：看今天歷史紀錄有幾筆，下一筆就是 n+1
+next_guest_number = len(st.session_state.history) + 1
+default_name = f"現場客 {next_guest_number}"
+
+# 3. 商品資料庫 (2026.04 希望廣場版)
 product_catalog = {
     "🐷 白豬系列": {
         "梅花薄片(1.5 mm)": 175, "梅花厚片(6mm)": 175, "里肌薄片(1.5 mm)": 170,
@@ -63,12 +68,15 @@ product_catalog = {
     }
 }
 
-st.title("🛒 花田喜彘 - 會員積點 POS")
+st.title("🛒 花田喜彘 - 高效率流水號 POS")
 
 # --- 結帳區域 ---
 c_name, c_disc = st.columns(2)
-with c_name: customer_name = st.text_input("👤 客人名稱/手機", value="現場客")
-with c_disc: discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
+with c_name:
+    # 這裡會自動填入 現場客X，但也可以手動改掉
+    customer_name = st.text_input("👤 客人名稱/手機", value=default_name)
+with c_disc:
+    discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
 
 st.write("---")
 col_cat, col_item, col_qty = st.columns([1, 2, 1])
@@ -98,7 +106,7 @@ if st.session_state.cart:
             st.session_state.cart.pop(i)
             st.rerun()
 
-# 計算總額與點數 (每 350 元 1 點)
+# 點數規則：每 350 元 1 點
 final_total = max(0, total_raw - discount)
 earned_points = final_total // 350
 
@@ -109,6 +117,7 @@ if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width
     if st.session_state.cart:
         items_summary = [f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]
         order_info = {
+            "單號": next_guest_number,
             "時間": datetime.now().strftime("%H:%M:%S"),
             "客戶": customer_name,
             "明細": str(items_summary),
@@ -117,21 +126,4 @@ if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width
         }
         st.session_state.history.append(order_info)
         save_history(st.session_state.history)
-        st.session_state.cart = []
-        st.rerun()
-
-# --- 報表區域 ---
-st.write("---")
-if st.session_state.history:
-    st.subheader("📊 今日已結帳清單 (含積點紀錄)")
-    df_hist = pd.DataFrame(st.session_state.history)
-    st.table(df_hist)
-    c_down, c_clear = st.columns(2)
-    with c_down:
-        csv_data = df_hist.to_csv(index=False).encode('utf-8-sig')
-        st.download_button("📥 下載積點報表", data=csv_data, file_name=f"花田點數報表_{datetime.now().strftime('%m%d')}.csv", use_container_width=True)
-    with c_clear:
-        if st.button("⚠️ 收攤清空資料", use_container_width=True):
-            if os.path.exists(DATA_FILE): os.remove(DATA_FILE)
-            st.session_state.history = []
-            st.rerun()
+        st.session_
