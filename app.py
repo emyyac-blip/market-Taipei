@@ -19,9 +19,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🛒 花田喜彘 - 市集 POS 結帳機")
+st.title("🛒 花田喜彘 - 市集 POS 結帳機 (3.0 專業版)")
 
-# 建立「購物車記憶」 (這是 2.0 版的靈魂)
+# 建立「購物車記憶」
 if 'cart' not in st.session_state:
     st.session_state.cart = []
 
@@ -40,9 +40,16 @@ products = {
     "黑豬香菇貢丸": 155
 }
 
+# === 新增：客人資訊與折扣區 ===
+col_name, col_discount = st.columns(2)
+with col_name:
+    customer_name = st.text_input("👤 客人名稱 / 備註 (選填)", placeholder="例如：李太太、現場客、預留")
+with col_discount:
+    discount = st.number_input("💸 折扣金額 (元)", min_value=0, value=0, step=10)
+
 st.write("---")
 
-# 上方區域：點單輸入區
+# === 上方區域：點單輸入區 ===
 col1, col2, col3 = st.columns([2, 1, 1])
 
 with col1:
@@ -56,7 +63,6 @@ with col3:
     st.write("") # 排版用空白
     st.write("")
     if st.button("➕ 加入清單", use_container_width=True):
-        # 將商品加入購物車記憶中
         st.session_state.cart.append({
             "name": selected_item,
             "price": unit_price,
@@ -66,7 +72,7 @@ with col3:
 
 st.write("---")
 
-# 中間區域：顯示購物車清單
+# === 中間區域：顯示購物車清單 ===
 st.subheader("📋 目前結帳清單")
 
 total_amount = 0
@@ -74,22 +80,31 @@ total_amount = 0
 if len(st.session_state.cart) == 0:
     st.info("清單目前是空的，請在上方選擇商品並點擊「加入清單」。")
 else:
-    # 逐一列出購物車內的商品
     for item in st.session_state.cart:
         c1, c2, c3, c4 = st.columns([3, 1, 1, 1])
         c1.write(f"▪️ **{item['name']}**")
         c2.write(f"單價 ${item['price']}")
         c3.write(f"數量: {item['qty']}")
         c4.write(f"小計 **${item['subtotal']}**")
-        # 累加總金額
         total_amount += item['subtotal']
 
 st.write("---")
 
-# 下方區域：巨大總金額與清空按鈕
-st.markdown("### 💰 應收總金額")
-st.markdown(f'<div class="main-price">${total_amount:,}</div>', unsafe_allow_html=True)
+# === 計算最終金額 ===
+final_amount = total_amount - discount
+if final_amount < 0:
+    final_amount = 0
 
-if st.button("🗑️ 結帳完成 / 下一位客人 (清空清單)", type="primary", use_container_width=True):
+# === 下方區域：巨大總金額與清空按鈕 ===
+st.markdown("### 💰 應收總金額")
+
+# 如果有折扣，顯示原價讓結帳人員核對
+if discount > 0:
+    st.markdown(f"*(原價 ${total_amount} - 折扣 ${discount})*")
+
+st.markdown(f'<div class="main-price">${final_amount:,}</div>', unsafe_allow_html=True)
+
+if st.button("🗑️ 結帳完成 / 下一位客人", type="primary", use_container_width=True):
+    # 這裡未來會加入「存入 Google 試算表」的指令
     st.session_state.cart = []
     st.rerun()
