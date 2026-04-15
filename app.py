@@ -98,3 +98,54 @@ with tab1:
         ca.write(f"▪️ {itm['品項']}")
         cb.write(f"${itm['單價']} x {itm['數量']}")
         t_raw += itm['小計']
+        if cc.button("移除", key=f"del_{i}"): st.session_state.cart.pop(i); st.rerun()
+    
+    f_total = max(0, t_raw - discount)
+    st.markdown(f'<div class="main-price">${f_total:,}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="points-tag">⭐ 本次累積：{f_total//350} 點</div>', unsafe_allow_html=True)
+
+    if st.button("✅ 結帳完成", type="primary", use_container_width=True):
+        if st.session_state.cart:
+            new_row = {"時間": datetime.now().strftime("%H:%M:%S"), "客戶": customer_name, "明細": str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]), "實收": f_total, "小時": datetime.now().hour, "獲得點數": int(f_total//350)}
+            history_df = pd.concat([history_df, pd.DataFrame([new_row])], ignore_index=True)
+            save_data(history_df, SALES_FILE)
+            st.session_state.cart = []; st.rerun()
+
+    # --- 重要：把紀錄表單加回這裡 ---
+    st.write("---")
+    if not history_df.empty:
+        st.subheader("📊 今日結帳紀錄")
+        # 顯示最後 10 筆，最新的在上面
+        st.table(history_df[['時間', '客戶', '實收', '獲得點數']].tail(10).iloc[::-1])
+
+with tab2:
+    st.subheader("📦 庫存設定")
+    edited_df = st.data_editor(stock_df, use_container_width=True, hide_index=True)
+    if st.button("💾 儲存庫存"):
+        save_data(edited_df, STOCK_FILE)
+        st.success("庫存已更新！")
+        st.rerun()
+
+with tab3:
+    st.subheader("📊 業績圖表分析")
+    if not history_df.empty:
+        st.metric("今日總營業額", f"${history_df['實收'].sum():,}")
+        # 圖表邏輯... (略)
+        all_sold = []
+        for m in history_df['明細']:
+            for item in eval(m):
+                name = item.split('] ')[1].split('x')[0]
+                q = int(item.split('x')[1])
+                all_sold.append({"品項": name, "數量": q})
+        sold_df = pd.DataFrame(all_sold).groupby("品項").sum().reset_index()
+        fig1 = px.bar(sold_df.sort_values("數量", ascending=False).head(10), x="數量", y="品項", orientation='h', title="🏆 Top 10 熱銷商品")
+        st.plotly_chart(fig1, use_container_width=True)
+        
+        st.write("---")
+        csv_data = history_df.to_csv(index=False).encode('utf-8-sig')
+        st.download_button("📥 下載完整報表 (CSV)", data=csv_data, file_name=f"花田報表_{datetime.now().strftime('%m%d')}.csv", use_container_width=True)
+        
+        if st.button("⚠️ 收攤清空所有資料"):
+            if os.path.exists(SALES_FILE): os.remove(SALES_FILE)
+            if os.path.exists(STOCK_FILE): os.remove(STOCK_FILE)
+            st.rerun()
