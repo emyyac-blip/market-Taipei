@@ -30,7 +30,10 @@ DATA_FILE = "today_sales.csv"
 
 def load_history():
     if os.path.exists(DATA_FILE):
-        return pd.read_csv(DATA_FILE).to_dict('records')
+        try:
+            return pd.read_csv(DATA_FILE).to_dict('records')
+        except:
+            return []
     return []
 
 def save_history(history_list):
@@ -53,7 +56,7 @@ product_catalog = {
     },
     "🐗 黑豬系列": {
         "黑豬梅花薄片(1.5 mm)": 198, "黑豬梅花厚片(6mm)": 198, "黑豬里肌薄片(1.5 mm)": 180,
-        "黑豬里肌厚片(6 mm)": 180, "黑豬五花薄片(1.5 mm)": 215, "黑豬五花厚片(6 mm)": 215,
+        "黑豬里肌厚片(6 mm)": 180, "黑豬五五花薄片(1.5 mm)": 215, "黑豬五花厚片(6 mm)": 215,
         "黑豬龍骨": 118, "黑豬梅花排骨": 215, "黑豬老鼠肉": 165, "黑豬松坂肉": 395
     },
     "🌭 加工品系列": {
@@ -67,8 +70,10 @@ st.title("🛒 花田喜彘 - 希望廣場 POS 3.3")
 
 # 1. 客戶資訊
 c_name, c_disc = st.columns(2)
-with c_name: customer_name = st.text_input("👤 客人名稱", value="現場客")
-with c_disc: discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
+with c_name:
+    customer_name = st.text_input("👤 客人名稱", value="現場客")
+with c_disc:
+    discount = st.number_input("💸 折扣金額", min_value=0, value=0, step=5)
 
 st.write("---")
 
@@ -79,8 +84,8 @@ with col_cat:
     category = st.selectbox("📂 分類", list(product_catalog.keys()))
 
 with col_item:
-    item_list = list(product_catalog[category].keys())
-    selected_item = st.selectbox("🍎 品項", item_list)
+    item_options = list(product_catalog[category].keys())
+    selected_item = st.selectbox("🍎 品項", item_options)
     unit_price = product_catalog[category][selected_item]
 
 with col_qty:
@@ -102,7 +107,7 @@ total_raw = 0
 if st.session_state.cart:
     for i, item in enumerate(st.session_state.cart):
         c1, c2, c3 = st.columns([3, 1, 1])
-        c1.write(f"{item['品項']}")
+        c1.write(f"▪️ {item['品項']}")
         c2.write(f"${item['單價']} x {item['數量']}")
         total_raw += item['小計']
         if c3.button("移除", key=f"del_{i}"):
@@ -119,17 +124,4 @@ if st.button("✅ 結帳完成 / 下一單", type="primary", use_container_width
         order_info = {
             "時間": datetime.now().strftime("%H:%M:%S"),
             "客戶": customer_name,
-            "明細": str([f"{i['品項']}x{i['數量']}" for i in st.session_state.cart]),
-            "實收": final_total
-        }
-        st.session_state.history.append(order_info)
-        save_history(st.session_state.history)
-        st.session_state.cart = []
-        st.rerun()
-
-st.write("---")
-
-# 6. 今日紀錄與報表
-if st.session_state.history:
-    st.subheader("📊 今日結帳報表")
-    df = pd.
+            "明細": str([f"{
