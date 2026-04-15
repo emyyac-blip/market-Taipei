@@ -96,7 +96,7 @@ with t1:
     if is_member:
         st.markdown(f'<div class="points-active">✨ 會員本次累積：{final_pts} 點</div>', unsafe_allow_html=True)
     else:
-        st.write("<p style='text-align:center; color:gray;'>散客結帳中（無積點）</p>", unsafe_allow_html=True)
+        st.write("<p style='text-align:center; color:gray;'>（無積點）</p>", unsafe_allow_html=True)
     
     if st.button("✅ 結帳完成", type="primary", use_container_width=True):
         if st.session_state.cart:
